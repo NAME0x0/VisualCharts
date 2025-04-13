@@ -110,9 +110,22 @@ Utilities,12
 *   **PageDown / , (Comma):** Scroll legend down.
 *   **Tab:** Toggle the floating shortcut help panel.
 
+## Deployment to GitHub Pages
+
+This project includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) to automatically deploy the visualizer to GitHub Pages.
+
+**Setup:**
+1.  **Push to GitHub:** Ensure your project code, including the `.github` directory, is pushed to a GitHub repository.
+2.  **Enable Pages:** In your GitHub repository settings:
+    *   Go to the "Pages" section (usually under "Code and automation").
+    *   Under "Build and deployment", select "GitHub Actions" as the **Source**.
+3.  **Trigger Deployment:** Push a change to your `main` branch (or the default branch specified in the workflow file). The GitHub Actions workflow will automatically run.
+4.  **View Site:** Once the action completes successfully, your site will be available at the URL provided in the Pages settings (e.g., `https://<your-username>.github.io/<your-repository-name>/`).
+
 ## Technologies Used
 
 *   [A-Frame](https://aframe.io/): Web framework for building virtual reality experiences.
 *   HTML, CSS, JavaScript
 *   Python 3.x (for data preparation script)
 *   Pandas (Python library, for data preparation script)
+*   GitHub Actions (for deployment)
