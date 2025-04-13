@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Improved 3D Bar Chart VR Visualizer</title>
+    <meta name="description" content="Visualize CSV data as a 3D bar chart in VR with improved code structure and UI layout.">
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <style>
+        /* Non-VR fallback upload button for desktop users */
+        #desktop-upload-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 9999;
+            padding: 10px 20px;
+            background-color: #4CC3D9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-family: sans-serif;
+        }
+
+        #desktop-upload-btn:hover {
+            background-color: #3AA3B9;
+        }
+
+        /* Only show in non-VR mode */
+        .a-fullscreen #desktop-upload-btn {
+            display: none;
+        }
+
+        /* Add an indicator for CSV upload status */
+        .upload-status {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 999;
+            font-family: Arial, sans-serif;
+            display: none; /* Start hidden */
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="csvInput" accept=".csv" style="display: none;">
+    <button id="desktop-upload-btn">Upload CSV</button>
+    <div id="upload-status" class="upload-status">Select a CSV file</div>
+
+    <a-scene background="color: #ECECEC">
+        <a-plane id="floor" position="0 0 -5" rotation="-90 0 0" width="20" height="20" color="#555" shadow="receive: true"></a-plane>
+        <a-plane id="ceiling" position="0 10 -5" rotation="90 0 0" width="20" height="20" color="#BBB"></a-plane>
+        <a-plane id="wall-back" position="0 5 -15" rotation="0 0 0" width="20" height="10" color="#AAA"></a-plane>
+        <a-plane id="wall-front" position="0 5 5" rotation="0 180 0" width="20" height="10" color="#AAA"></a-plane>
+        <a-plane id="wall-left" position="-10 5 -5" rotation="0 90 0" width="20" height="10" color="#CCC"></a-plane>
+        <a-plane id="wall-right" position="10 5 -5" rotation="0 -90 0" width="20" height="10" color="#CCC"></a-plane>
+
+        <a-light type="ambient" color="#888"></a-light>
+        <a-light type="directional" intensity="0.6" position="-1 2 3" castShadow="true"></a-light>
+        <a-light type="point" intensity="0.3" position="0 8 -3" color="#FFF"></a-light>
+
+        <a-entity id="uiPanel1" position="0 1.6 -2">
+            <a-plane width="1.5" height="0.8" color="#333" opacity="0.7" rounded="radius: 0.05"></a-plane>
+            <a-entity id="uploadButton" class="collidable clickable" position="0 0.15 0.01">
+                <a-plane width="1.3" height="0.35" color="#444" rounded="radius: 0.03">
+                    <a-text value="Upload CSV File" align="center" color="#FFF" width="2.5" position="0 0 0.01" font="roboto"></a-text>
+                </a-plane>
+            </a-entity>
+            <a-entity id="resetButton" class="collidable clickable" position="0 -0.25 0.01">
+                 <a-plane width="1.3" height="0.25" color="#D9534F" rounded="radius: 0.03">
+                     <a-text value="Reset Chart" align="center" color="#FFF" width="2.5" position="0 0 0.01" font="roboto"></a-text>
+                 </a-plane>
+            </a-entity>
+        </a-entity>
+        <a-entity id="uiPanel2" position="0 0.5 -3">
+             <a-plane width="2.5" height="0.7" color="#4CC3D9" opacity="0.9" rounded="radius: 0.05"></a-plane>
+             <a-text value="ATTENTION: Upload your CSV data here" align="center" color="#FFF" width="4" position="0 0.2 0.01" font="roboto"></a-text>
+              <a-entity id="uploadButtonAlt" class="collidable clickable" position="0 -0.15 0.01">
+                  <a-plane width="2.3" height="0.4" color="#333" rounded="radius: 0.03">
+                      <a-text value="CLICK TO UPLOAD CSV" align="center" color="#FFF" width="4" position="0 0 0.01" font="roboto"></a-text>
+                  </a-plane>
+             </a-entity>
+        </a-entity>
+        <a-entity id="uiPanel3" position="-6 0.5 -5">
+            <a-plane width="1.0" height="1.0" color="#333" opacity="0.7" rounded="radius: 0.05"></a-plane>
+            <a-text value="View Points" align="center" color="#FFF" width="2" position="0 0.35 0.01" font="roboto"></a-text>
+            <a-entity id="frontView" class="collidable clickable" position="0 0.1 0.01">
+                <a-plane width="0.9" height="0.2" color="#444" rounded="radius: 0.02">
+                    <a-text value="Front View" align="center" color="#FFF" width="1.5" position="0 0 0.01" font="roboto"></a-text>
+                </a-plane>
+            </a-entity>
+            <a-entity id="topView" class="collidable clickable" position="0 -0.15 0.01">
+                <a-plane width="0.9" height="0.2" color="#444" rounded="radius: 0.02">
+                     <a-text value="Top View" align="center" color="#FFF" width="1.5" position="0 0 0.01" font="roboto"></a-text>
+                </a-plane>
+            </a-entity>
+            <a-entity id="sideView" class="collidable clickable" position="0 -0.4 0.01">
+                <a-plane width="0.9" height="0.2" color="#444" rounded="radius: 0.02">
+                     <a-text value="Side View" align="center" color="#FFF" width="1.5" position="0 0 0.01" font="roboto"></a-text>
+                </a-plane>
+            </a-entity>
+        </a-entity>
+
+        <a-entity id="chartContainer" position="-4.5 0 -5"></a-entity>
+
+        <a-text id="feedbackText" value="" position="0 2.5 -2" align="center" color="#D9534F" width="4" visible="false" font="roboto"></a-text>
+
+        <a-entity id="rig" position="0 1.6 0">
+            <a-camera id="camera"
+                      look-controls="pointerLockEnabled: true"
+                      wasd-controls="fly: false; acceleration: 25"
+                      cursor="rayOrigin: mouse; fuse: false;"
+                      raycaster="objects: .collidable; far: 100;">
+
+                <a-entity id="floatingUIContainer" position="-1.2 0.8 -1.5">
+                    <a-circle id="uiIcon" class="collidable clickable" radius="0.06" color="#555" position="0 0 0.01">
+                        <a-text value="☰" align="center" color="#FFF" width="0.2" position="0 0 0.01" font="roboto"></a-text>
+                    </a-circle>
+                    <a-plane id="uiPanel" visible="false" width="0.7" height="0.85" color="#444" opacity="0.85" position="0.4 0 0" rounded="radius: 0.03">
+                        <a-text value="Shortcuts:"       align="left" color="#FFF" width="0.6" position="-0.3 0.35 0.01" font="roboto"></a-text>
+                        <a-text value="U: Upload CSV"    align="left" color="#FFF" width="0.6" position="-0.3 0.25 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="R: Reset Chart"   align="left" color="#FFF" width="0.6" position="-0.3 0.15 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="1: Front View"    align="left" color="#FFF" width="0.6" position="-0.3 0.05 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="2: Top View"      align="left" color="#FFF" width="0.6" position="-0.3 -0.05 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="3: Side View"     align="left" color="#FFF" width="0.6" position="-0.3 -0.15 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="PgUp/.: Lgn Up"   align="left" color="#FFF" width="0.6" position="-0.3 -0.25 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="PgDn/,: Lgn Down" align="left" color="#FFF" width="0.6" position="-0.3 -0.35 0.01" wrap-count="25" font="roboto"></a-text>
+                        <a-text value="Tab: Toggle This" align="left" color="#FFF" width="0.6" position="-0.3 -0.45 0.01" wrap-count="25" font="roboto"></a-text>
+                    </a-plane>
+                </a-entity>
+                </a-camera>
+            <a-entity oculus-touch-controls="hand: left"></a-entity>
+            <a-entity oculus-touch-controls="hand: right"></a-entity>
+        </a-entity>
+
+        <a-sky color="#ECECEC"></a-sky>
+    </a-scene>
+
+    <script>
+        // --- Constants & Configuration ---
+        const BAR_WIDTH = 0.8;
+        const BAR_DEPTH = 0.8;
+        const BAR_SPACING = 1.2;
+        const LABEL_COLOR = '#000';
+        const MAX_BAR_HEIGHT = 10;
+        const COLOR_PALETTE = [
+            '#4CC3D9', '#7BC8A4', '#FFC65D', '#F16745', '#93648D',
+            '#404040', '#E4DFDA', '#48577D', '#7D486F', '#64A6BD'
+        ];
+        const HOVER_EMISSIVE_COLOR = '#FFFFFF';
+        const HOVER_EMISSIVE_INTENSITY = 0.6;
+        const LEGEND_ITEMS_PER_PAGE = 5; // Kept at 5 for spacing
+        const FEEDBACK_DURATION = 3000;
+
+        // --- DOM Element Selectors ---
+        const sceneEl = document.querySelector('a-scene');
+        const csvInput = document.querySelector('#csvInput');
+        const desktopUploadBtn = document.querySelector('#desktop-upload-btn');
+        const uploadStatus = document.querySelector('#upload-status');
+        const chartContainer = document.querySelector('#chartContainer');
+        const feedbackText = document.querySelector('#feedbackText');
+        const rig = document.querySelector('#rig');
+        const cameraEl = document.querySelector('#camera');
+        const uiIcon = document.querySelector('#uiIcon');
+        const uiPanel = document.querySelector('#uiPanel');
+        const uploadButton = document.querySelector('#uploadButton');
+        const uploadButtonAlt = document.querySelector('#uploadButtonAlt');
+        const resetButton = document.querySelector('#resetButton');
+        const frontViewBtn = document.querySelector('#frontView');
+        const topViewBtn = document.querySelector('#topView');
+        const sideViewBtn = document.querySelector('#sideView');
+        const uiPanel1 = document.querySelector('#uiPanel1');
+        const uiPanel2 = document.querySelector('#uiPanel2');
+
+        // --- State Variables ---
+        let legendItems = [];
+        let legendScrollOffset = 0;
+        let legendContainer = null;
+        let scrollbarTrack = null;
+        let scrollbarHandle = null;
+        let chartBars = [];
+        let feedbackTimeout = null;
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', setupEventListeners);
+
+        // --- Event Listener Setup ---
+        function setupEventListeners() {
+            uploadButton.addEventListener('click', triggerFileInput);
+            uploadButtonAlt.addEventListener('click', triggerFileInput);
+            desktopUploadBtn.addEventListener('click', triggerFileInput);
+            resetButton.addEventListener('click', handleReset);
+            frontViewBtn.addEventListener('click', () => handleViewChange('front'));
+            topViewBtn.addEventListener('click', () => handleViewChange('top'));
+            sideViewBtn.addEventListener('click', () => handleViewChange('side'));
+            csvInput.addEventListener('change', handleFileSelect);
+            window.addEventListener('keydown', handleKeyDown);
+            uiIcon.addEventListener('click', toggleUiPanel);
+            // Add hover effects (optional)
+            document.querySelectorAll('.clickable').forEach(el => {
+                const plane = el.querySelector('a-plane');
+                const circle = el.tagName.toLowerCase() === 'a-circle' ? el : null;
+                const targetEl = plane || circle;
+                if (targetEl) {
+                    const originalColor = targetEl.getAttribute('color');
+                    el.addEventListener('mouseenter', () => targetEl.setAttribute('color', lightenColor(originalColor, 20)));
+                    el.addEventListener('mouseleave', () => targetEl.setAttribute('color', originalColor));
+                }
+            });
+        }
+
+        // --- Event Handlers ---
+        function triggerFileInput() { showUploadStatus("Select a CSV file", 5000); csvInput.click(); }
+        function handleReset() { clearChart(); showFeedback("Chart Reset", 2000, '#5CB85C'); }
+        function handleViewChange(viewType) {
+            let pos = { x: 0, y: 1.6, z: 0 }, rot = { x: 0, y: 0, z: 0 }, msg = "";
+            switch (viewType) {
+                case 'front': msg = "Front View"; break;
+                case 'top': pos = { x: 0, y: 9, z: -5 }; rot = { x: -90, y: 0, z: 0 }; msg = "Top View"; break;
+                case 'side': pos = { x: -8, y: 1.6, z: -5 }; rot = { x: 0, y: 90, z: 0 }; msg = "Side View"; break;
+            }
+            moveCamera(pos, rot); showFeedback(msg, 1500, '#4CC3D9');
+        }
+        function handleFileSelect(event) {
+            const file = event.target.files[0]; if (!file) return;
+            showUploadStatus("Loading CSV...", null, '#4CC3D9'); showFeedback('Loading...', null, '#4CC3D9');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = parseCSV(e.target.result);
+                    if (data.length > 0) { updateBarChart(data); showFeedback('Data Loaded!', FEEDBACK_DURATION, '#5CB85C'); showUploadStatus("Data loaded successfully!", 5000, 'rgba(92, 184, 92, 0.7)'); }
+                    else { showFeedback('CSV parsed, but no data found.', FEEDBACK_DURATION, '#FFA500'); showUploadStatus("CSV parsed, but no data found.", 5000, 'rgba(255, 165, 0, 0.7)'); clearChart(); }
+                } catch (error) { console.error("Error processing CSV:", error); showFeedback(`Error: ${error.message}`, FEEDBACK_DURATION + 2000, '#D9534F'); showUploadStatus(`Error: ${error.message}`, 5000, 'rgba(217, 83, 79, 0.7)'); clearChart(); }
+                finally { csvInput.value = ''; }
+            };
+            reader.onerror = (e) => { console.error("FileReader error:", e); showFeedback('Error reading file.', FEEDBACK_DURATION, '#D9534F'); showUploadStatus("Error reading file.", 5000, 'rgba(217, 83, 79, 0.7)'); csvInput.value = ''; clearChart(); };
+            reader.readAsText(file);
+        }
+        function handleKeyDown(event) {
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) return;
+            const key = event.key.toUpperCase(); let handled = true;
+            switch (key) {
+                case 'U': triggerFileInput(); break;
+                case 'R': handleReset(); break;
+                case '1': handleViewChange('front'); break;
+                case '2': handleViewChange('top'); break;
+                case '3': handleViewChange('side'); break;
+                case 'PAGEUP': case '.': scrollLegend(-1); break;
+                case 'PAGEDOWN': case ',': scrollLegend(1); break;
+                case 'TAB': toggleUiPanel(); break;
+                default: handled = false; break;
+            }
+            if (handled) event.preventDefault();
+        }
+        function toggleUiPanel() { const isVisible = uiPanel.getAttribute('visible'); uiPanel.setAttribute('visible', !isVisible); }
+
+        // --- Core Logic Functions ---
+        function parseCSV(csvText) { /* ... (CSV parsing logic remains the same) ... */
+            const lines = csvText.split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('//'));
+            if (lines.length < 2) throw new Error('CSV must have a header and at least one data row.');
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            if (headers.length !== 2 || headers[0] !== 'category' || headers[1] !== 'value') throw new Error('CSV header must be exactly "Category,Value" (case-insensitive).');
+            const data = lines.slice(1).map((line, index) => {
+                const values = line.split(','); const rowNum = index + 2;
+                if (values.length !== 2) throw new Error(`Invalid data on row ${rowNum}: Expected 2 columns, found ${values.length}. Line: "${line}"`);
+                const category = values[0].trim(); const valueStr = values[1].trim(); const value = parseFloat(valueStr);
+                if (category === '') throw new Error(`Invalid data on row ${rowNum}: Category cannot be empty.`);
+                if (isNaN(value)) throw new Error(`Invalid data on row ${rowNum}: Value "${valueStr}" is not a valid number.`);
+                if (value < 0) console.warn(`Warning on row ${rowNum}: Negative value (${value}) found. Using its absolute value for bar height.`);
+                return { category, value: Math.abs(value) };
+            });
+            if (data.length > 100) { console.warn("Performance warning: Large dataset (>" + data.length + " bars)."); showFeedback('Warning: Large dataset, performance may be affected.', 4000, '#FFA500'); }
+            return data;
+         }
+        function clearChart() { /* ... (Clear chart logic remains the same) ... */
+            while (chartContainer.firstChild) chartContainer.removeChild(chartContainer.firstChild);
+            if (legendContainer && legendContainer.parentNode) legendContainer.parentNode.removeChild(legendContainer);
+            legendContainer = null; legendItems = []; legendScrollOffset = 0; scrollbarTrack = null; scrollbarHandle = null; chartBars = [];
+            uiPanel1.setAttribute('visible', true); uiPanel2.setAttribute('visible', true); desktopUploadBtn.style.display = 'block';
+         }
+        function updateBarChart(data) { /* ... (Update bar chart logic remains the same) ... */
+            clearChart(); chartBars = []; if (!data || data.length === 0) return;
+            const maxValue = data.reduce((max, item) => Math.max(max, item.value), 0);
+            const scaleFactor = (maxValue > 0 && maxValue > MAX_BAR_HEIGHT) ? MAX_BAR_HEIGHT / maxValue : 1;
+            data.forEach((item, index) => { createBar(item, index, scaleFactor); createLabels(item, index, scaleFactor); });
+            addAxes(data.length, maxValue * scaleFactor); addColorLegend(data);
+            uiPanel1.setAttribute('visible', false); uiPanel2.setAttribute('visible', false);
+         }
+        function createBar(item, index, scaleFactor) { /* ... (Create bar logic remains the same) ... */
+            const barHeight = Math.max(0.01, item.value * scaleFactor); const barPosX = index * BAR_SPACING; const barPosY = barHeight / 2; const barColor = COLOR_PALETTE[index % COLOR_PALETTE.length];
+            const bar = document.createElement('a-box'); bar.setAttribute('class', 'bar collidable'); bar.setAttribute('position', `${barPosX} ${barPosY} 0`); bar.setAttribute('height', barHeight); bar.setAttribute('width', BAR_WIDTH); bar.setAttribute('depth', BAR_DEPTH); bar.setAttribute('color', barColor); bar.setAttribute('shadow', 'cast: true; receive: false'); bar.setAttribute('data-value', item.value.toFixed(2)); bar.setAttribute('data-category', item.category); bar.setAttribute('data-index', index); bar.originalColor = barColor;
+            bar.addEventListener('mouseenter', handleBarMouseEnter); bar.addEventListener('mouseleave', handleBarMouseLeave);
+            chartContainer.appendChild(bar); chartBars.push(bar);
+         }
+        function createLabels(item, index, scaleFactor) { /* ... (Create labels logic remains the same) ... */
+            const barHeight = Math.max(0.01, item.value * scaleFactor); const barPosX = index * BAR_SPACING;
+            const categoryLabel = document.createElement('a-text'); categoryLabel.setAttribute('value', item.category); categoryLabel.setAttribute('position', `${barPosX} -0.2 0.5`); categoryLabel.setAttribute('align', 'center'); categoryLabel.setAttribute('color', LABEL_COLOR); categoryLabel.setAttribute('width', BAR_SPACING * 1.5); categoryLabel.setAttribute('rotation', '-90 0 0'); categoryLabel.setAttribute('font', 'roboto'); categoryLabel.setAttribute('shader', 'msdf'); chartContainer.appendChild(categoryLabel);
+            const valueLabel = document.createElement('a-text'); valueLabel.setAttribute('value', item.value.toFixed(2)); valueLabel.setAttribute('position', `${barPosX} ${barHeight + 0.2} 0`); valueLabel.setAttribute('align', 'center'); valueLabel.setAttribute('color', LABEL_COLOR); valueLabel.setAttribute('width', 3); valueLabel.setAttribute('font', 'roboto'); valueLabel.setAttribute('shader', 'msdf'); chartContainer.appendChild(valueLabel);
+         }
+        function addAxes(numBars, maxScaledHeight) { /* ... (Add axes logic remains the same) ... */
+            const chartWidth = (numBars - 1) * BAR_SPACING + BAR_WIDTH;
+            const yAxis = document.createElement('a-cylinder'); yAxis.setAttribute('color', '#555'); yAxis.setAttribute('height', maxScaledHeight > 0 ? maxScaledHeight : 1); yAxis.setAttribute('radius', '0.03'); yAxis.setAttribute('position', `${-BAR_SPACING / 2} ${maxScaledHeight / 2} 0`); chartContainer.appendChild(yAxis);
+            const xAxis = document.createElement('a-cylinder'); xAxis.setAttribute('color', '#555'); xAxis.setAttribute('height', chartWidth > 0 ? chartWidth : 1); xAxis.setAttribute('radius', '0.03'); xAxis.setAttribute('rotation', '0 0 90'); xAxis.setAttribute('position', `${(chartWidth - BAR_WIDTH) / 2} 0 0`); chartContainer.appendChild(xAxis);
+            const yLabel = document.createElement('a-text'); yLabel.setAttribute('value', 'Value'); yLabel.setAttribute('color', LABEL_COLOR); yLabel.setAttribute('position', `${-BAR_SPACING / 2 - 0.3} ${maxScaledHeight / 2} 0`); yLabel.setAttribute('rotation', '0 0 90'); yLabel.setAttribute('width', 3); yLabel.setAttribute('font', 'roboto'); chartContainer.appendChild(yLabel);
+            const xLabel = document.createElement('a-text'); xLabel.setAttribute('value', 'Category'); xLabel.setAttribute('color', LABEL_COLOR); xLabel.setAttribute('position', `${(chartWidth - BAR_WIDTH) / 2} -0.5 0.5`); xLabel.setAttribute('width', 4); xLabel.setAttribute('align', 'center'); xLabel.setAttribute('font', 'roboto'); chartContainer.appendChild(xLabel);
+         }
+
+        // --- Legend Creation (Major Overhaul v3 - Appearance Refinement) ---
+        function addColorLegend(data) {
+            if (!data || data.length === 0) return;
+            if (legendContainer && legendContainer.parentNode) {
+                legendContainer.parentNode.removeChild(legendContainer);
+            }
+
+            legendContainer = document.createElement('a-entity');
+            legendContainer.setAttribute('id', 'legendContainer');
+            legendContainer.setAttribute('position', '0.9 -0.5 -1.5'); 
+            legendContainer.setAttribute('rotation', '0 0 0');
+
+            // --- Legend Layout Constants (Revised for Appearance) ---
+            const legendWidth = 1.0;         // Wider panel
+            const itemHeight = 0.12;         // Taller items for bigger text
+            const itemSpacing = 0.05;       // More spacing
+            const totalItemVerticalSpace = itemHeight + itemSpacing;
+            const panelPadding = 0.10;       // More padding
+            const buttonHeight = 0.06;       // Keep button size
+            const titleHeight = 0.10;        // Taller title area for bigger text
+            const scrollbarWidth = 0.025;    // Slightly wider scrollbar
+            const scrollbarPadding = 0.05;   // More padding for scrollbar
+            // Content width adjusted for increased padding and scrollbar
+            const contentWidth = legendWidth - scrollbarWidth - scrollbarPadding - (panelPadding * 2);
+            const contentHeight = LEGEND_ITEMS_PER_PAGE * totalItemVerticalSpace - itemSpacing; // Based on 5 items
+            const legendHeight = titleHeight + buttonHeight * 2 + contentHeight + panelPadding * 2 + itemSpacing * 3;
+            const colorSquareSize = itemHeight * 0.5; // Slightly larger square relative to item height
+
+            // --- Background ---
+            const legendBg = document.createElement('a-plane');
+            legendBg.setAttribute('color', '#303030'); // Slightly darker grey
+            legendBg.setAttribute('opacity', '0.9');
+            legendBg.setAttribute('height', legendHeight);
+            legendBg.setAttribute('width', legendWidth);
+            legendBg.setAttribute('class', 'collidable');
+            legendBg.setAttribute('rounded', 'radius: 0.05'); // Keep rounded corners
+            legendContainer.appendChild(legendBg);
+
+            // --- Title (Increased Size) ---
+            const titleY = legendHeight / 2 - panelPadding - titleHeight / 2;
+            const legendTitle = document.createElement('a-text');
+            legendTitle.setAttribute('value', 'Legend');
+            legendTitle.setAttribute('align', 'center');
+            legendTitle.setAttribute('position', `0 ${titleY} 0.01`);
+            legendTitle.setAttribute('color', '#FFFFFF'); // Brighter title
+            legendTitle.setAttribute('width', legendWidth * 1.2); // Increased width for larger text appearance
+            legendTitle.setAttribute('wrap-count', 20); // Adjust wrap count if needed
+            legendTitle.setAttribute('font', 'roboto');
+            legendContainer.appendChild(legendTitle);
+
+            // --- Scroll Buttons ---
+            const scrollUpY = titleY - titleHeight / 2 - itemSpacing - buttonHeight / 2;
+            const scrollDownY = -legendHeight / 2 + panelPadding + buttonHeight / 2;
+            const scrollUpBtn = createScrollButton('legendScrollUp', scrollUpY, 180, -1);
+            const scrollDownBtn = createScrollButton('legendScrollDown', scrollDownY, 0, 1);
+            legendContainer.appendChild(scrollUpBtn);
+            legendContainer.appendChild(scrollDownBtn);
+
+            // --- Scrollbar Elements (Moved Right) ---
+            const scrollbarTrackHeight = contentHeight;
+            // X position: Place scrollbar center just inside the right edge
+            const scrollbarX = legendWidth / 2 - panelPadding / 2 - scrollbarWidth / 2; // Adjusted X
+            const itemAreaCenterY = scrollUpY - buttonHeight / 2 - itemSpacing - contentHeight / 2;
+
+            scrollbarTrack = document.createElement('a-plane');
+            scrollbarTrack.setAttribute('id', 'scrollbarTrack');
+            scrollbarTrack.setAttribute('color', '#505050'); // Slightly lighter track
+            scrollbarTrack.setAttribute('width', scrollbarWidth);
+            scrollbarTrack.setAttribute('height', scrollbarTrackHeight);
+            scrollbarTrack.setAttribute('position', `${scrollbarX} ${itemAreaCenterY} 0.015`); 
+            scrollbarTrack.setAttribute('opacity', '0.8'); // Slightly more opaque
+            scrollbarTrack.setAttribute('visible', false);
+            scrollbarTrack.setAttribute('rounded', 'radius: 0.01');
+            legendContainer.appendChild(scrollbarTrack);
+
+            scrollbarHandle = document.createElement('a-plane');
+            scrollbarHandle.setAttribute('id', 'scrollbarHandle');
+            scrollbarHandle.setAttribute('color', '#C0C0C0'); // Lighter handle
+            scrollbarHandle.setAttribute('width', scrollbarWidth);
+            scrollbarHandle.setAttribute('position', `${scrollbarX} ${itemAreaCenterY} 0.02`); 
+            scrollbarHandle.setAttribute('visible', false);
+            scrollbarHandle.setAttribute('rounded', 'radius: 0.01');
+            legendContainer.appendChild(scrollbarHandle);
+
+            // --- Mouse Wheel Listener ---
+            legendBg.addEventListener('wheel', handleLegendWheelScroll);
+
+            // --- Create Legend Item Elements (Increased Text Size) ---
+            legendItems = [];
+            legendScrollOffset = 0;
+            // Adjust X positions based on new padding
+            const itemStartX = -legendWidth / 2 + panelPadding + colorSquareSize / 2; 
+            const textStartX = itemStartX + colorSquareSize / 2 + 0.08; // Increased gap for larger text
+            const itemStartY = scrollUpY - buttonHeight / 2 - itemSpacing - itemHeight / 2; 
+
+            data.forEach((item, index) => {
+                const itemY = itemStartY - (index * totalItemVerticalSpace); 
+
+                // Color Square
+                const colorSquare = document.createElement('a-plane');
+                colorSquare.setAttribute('width', colorSquareSize);
+                colorSquare.setAttribute('height', colorSquareSize);
+                colorSquare.setAttribute('color', COLOR_PALETTE[index % COLOR_PALETTE.length]);
+                colorSquare.setAttribute('position', `${itemStartX} ${itemY} 0.01`);
+                colorSquare.setAttribute('visible', false);
+                colorSquare.setAttribute('class', 'collidable legend-item');
+                colorSquare.setAttribute('data-index', index);
+                legendContainer.appendChild(colorSquare);
+
+                // Category Text (Increased Size, Brighter Color)
+                const categoryText = document.createElement('a-text');
+                categoryText.setAttribute('value', item.category);
+                categoryText.setAttribute('color', '#FFFFFF'); // Brighter text color
+                categoryText.setAttribute('align', 'left');
+                categoryText.setAttribute('anchor', 'left');
+                categoryText.setAttribute('baseline', 'center');
+                categoryText.setAttribute('width', 1.5); // Increased width significantly for larger text
+                categoryText.setAttribute('wrap-count', 40); // Adjust wrap count if needed
+                categoryText.setAttribute('letter-spacing', 1); // Reduced letter spacing slightly
+                categoryText.setAttribute('position', `${textStartX} ${itemY} 0.01`);
+                categoryText.setAttribute('visible', false);
+                categoryText.setAttribute('class', 'collidable legend-item');
+                categoryText.setAttribute('data-index', index);
+                categoryText.setAttribute('font', 'roboto');
+                categoryText.setAttribute('shader', 'msdf');
+                categoryText.setAttribute('negate', 'false');
+                legendContainer.appendChild(categoryText);
+
+                [colorSquare, categoryText].forEach(el => {
+                    el.addEventListener('mouseenter', handleLegendItemMouseEnter);
+                    el.addEventListener('mouseleave', handleLegendItemMouseLeave);
+                });
+
+                legendItems.push({
+                    colorSquare: colorSquare,
+                    categoryText: categoryText,
+                    barRef: chartBars[index]
+                });
+            });
+
+            cameraEl.appendChild(legendContainer);
+            updateLegendDisplay(); // Initial display update
+        }
+
+        function createScrollButton(id, yPos, rotation, scrollDirection) {
+            const button = document.createElement('a-triangle');
+            button.setAttribute('id', id);
+            button.setAttribute('class', 'collidable clickable');
+            button.setAttribute('color', '#888');
+            button.setAttribute('material', 'opacity', 0.5);
+            button.setAttribute('scale', '0.05 0.05 0.05'); // Scale matches buttonHeight
+            button.setAttribute('rotation', `0 0 ${rotation}`);
+            button.setAttribute('position', `0 ${yPos} 0.02`);
+            button.addEventListener('mouseenter', () => {
+                button.setAttribute('color', '#BBB');
+                const canScroll = (scrollDirection === -1 && legendScrollOffset > 0) || (scrollDirection === 1 && legendScrollOffset < legendItems.length - LEGEND_ITEMS_PER_PAGE);
+                if (canScroll) button.setAttribute('material', 'opacity', 1.0);
+            });
+            button.addEventListener('mouseleave', () => { button.setAttribute('color', '#888'); updateScrollButtonOpacity(); });
+            button.addEventListener('click', (evt) => { evt.stopPropagation(); scrollLegend(scrollDirection); });
+            return button;
+        }
+
+        function scrollLegend(direction) {
+            const newOffset = legendScrollOffset + direction;
+            const maxOffset = Math.max(0, legendItems.length - LEGEND_ITEMS_PER_PAGE);
+            if (newOffset >= 0 && newOffset <= maxOffset) {
+                legendScrollOffset = newOffset;
+                updateLegendDisplay();
+            }
+        }
+
+        function handleLegendWheelScroll(event) {
+            event.preventDefault();
+            const scrollAmount = Math.sign(event.deltaY);
+            scrollLegend(scrollAmount);
+        }
+
+        // --- Legend Display Update (Using Updated Constants) ---
+        function updateLegendDisplay() {
+            if (!legendContainer || !legendItems.length) return;
+
+            const needsScrolling = legendItems.length > LEGEND_ITEMS_PER_PAGE;
+            const maxOffset = Math.max(0, legendItems.length - LEGEND_ITEMS_PER_PAGE);
+
+            // --- Retrieve Layout Constants (Ensure consistency with addColorLegend) ---
+            const legendPlane = legendContainer.querySelector('a-plane');
+            if (!legendPlane) return;
+            const legendWidth = legendPlane.getAttribute('width'); // Get actual width
+            const legendHeight = legendPlane.getAttribute('height');
+            // Use the updated constants from addColorLegend v3
+            const itemHeight = 0.12;
+            const itemSpacing = 0.05;
+            const totalItemVerticalSpace = itemHeight + itemSpacing;
+            const panelPadding = 0.10;
+            const buttonHeight = 0.06;
+            const titleHeight = 0.10;
+            const scrollbarWidth = 0.025;
+            const colorSquareSize = itemHeight * 0.5;
+            // Recalculate positions based on retrieved dimensions and constants
+            const scrollUpY = legendHeight / 2 - panelPadding - titleHeight - itemSpacing - buttonHeight / 2;
+            const itemStartY = scrollUpY - buttonHeight / 2 - itemSpacing - itemHeight / 2;
+            const itemStartX = -legendWidth / 2 + panelPadding + colorSquareSize / 2;
+            const textStartX = itemStartX + colorSquareSize / 2 + 0.08;
+
+            // Update item visibility and position
+            legendItems.forEach((item, index) => {
+                const isVisible = index >= legendScrollOffset && index < legendScrollOffset + LEGEND_ITEMS_PER_PAGE;
+                item.colorSquare.setAttribute('visible', isVisible);
+                item.categoryText.setAttribute('visible', isVisible);
+
+                if (isVisible) {
+                    const displayIndex = index - legendScrollOffset;
+                    const currentItemCenterY = itemStartY - (displayIndex * totalItemVerticalSpace);
+                    // Use recalculated X positions
+                    item.colorSquare.setAttribute('position', `${itemStartX} ${currentItemCenterY} 0.01`);
+                    item.categoryText.setAttribute('position', `${textStartX} ${currentItemCenterY} 0.01`);
+                }
+            });
+
+            updateScrollButtonOpacity();
+
+            // Update scrollbar (Using Updated X Position)
+            if (scrollbarTrack && scrollbarHandle) {
+                scrollbarTrack.setAttribute('visible', needsScrolling);
+                scrollbarHandle.setAttribute('visible', needsScrolling);
+                if (needsScrolling) {
+                    const scrollbarTrackHeight = scrollbarTrack.getAttribute('height');
+                    const handleHeight = Math.max(0.02, scrollbarTrackHeight * (LEGEND_ITEMS_PER_PAGE / legendItems.length));
+                    scrollbarHandle.setAttribute('height', handleHeight);
+
+                    const scrollPercentage = maxOffset > 0 ? legendScrollOffset / maxOffset : 0;
+                    // Recalculate scrollbar X based on actual legend width
+                    const scrollbarX = legendWidth / 2 - panelPadding / 2 - scrollbarWidth / 2; 
+                    const trackCenterY = scrollbarTrack.getAttribute('position').y; 
+                    const trackTopY = trackCenterY + scrollbarTrackHeight / 2;
+                    const handleTopY = trackTopY - (scrollPercentage * (scrollbarTrackHeight - handleHeight));
+                    const handleCenterY = handleTopY - handleHeight / 2;
+
+                    // Set updated X and calculated Y
+                    scrollbarHandle.setAttribute('position', `${scrollbarX} ${handleCenterY} 0.02`);
+                    // Ensure track X is also correct (might not change, but good practice)
+                    scrollbarTrack.setAttribute('position', `${scrollbarX} ${trackCenterY} 0.015`); 
+                }
+            }
+        }
+
+        function updateScrollButtonOpacity() {
+             const scrollUpBtn = document.querySelector('#legendScrollUp');
+             const scrollDownBtn = document.querySelector('#legendScrollDown');
+             const canScrollUp = legendScrollOffset > 0;
+             const canScrollDown = legendScrollOffset < Math.max(0, legendItems.length - LEGEND_ITEMS_PER_PAGE);
+             if (scrollUpBtn) scrollUpBtn.setAttribute('material', 'opacity', canScrollUp ? 1.0 : 0.3);
+             if (scrollDownBtn) scrollDownBtn.setAttribute('material', 'opacity', canScrollDown ? 1.0 : 0.3);
+        }
+
+
+        // --- Interaction Handlers (Hover Effects) ---
+        function handleBarMouseEnter(evt) { /* ... */ if (evt.target.isLegendHover) return; const bar = evt.target; bar.setAttribute('material', 'emissive', HOVER_EMISSIVE_COLOR); bar.setAttribute('material', 'emissiveIntensity', HOVER_EMISSIVE_INTENSITY); const index = parseInt(bar.getAttribute('data-index'), 10); highlightLegendItem(index, true); }
+        function handleBarMouseLeave(evt) { /* ... */ if (evt.target.isLegendHover) return; const bar = evt.target; bar.setAttribute('material', 'emissive', '#000000'); bar.setAttribute('material', 'emissiveIntensity', 0); const index = parseInt(bar.getAttribute('data-index'), 10); highlightLegendItem(index, false); }
+        function handleLegendItemMouseEnter(evt) { /* ... */ const index = parseInt(evt.target.getAttribute('data-index'), 10); highlightLegendItem(index, true); highlightBar(index, true); }
+        function handleLegendItemMouseLeave(evt) { /* ... */ const index = parseInt(evt.target.getAttribute('data-index'), 10); highlightLegendItem(index, false); highlightBar(index, false); }
+        function highlightBar(index, highlight) { /* ... */ if (index >= 0 && index < chartBars.length) { const bar = chartBars[index]; bar.isLegendHover = highlight; if (highlight) { bar.setAttribute('material', 'emissive', HOVER_EMISSIVE_COLOR); bar.setAttribute('material', 'emissiveIntensity', HOVER_EMISSIVE_INTENSITY); } else { if (!bar.matches(':hover')) { bar.setAttribute('material', 'emissive', '#000000'); bar.setAttribute('material', 'emissiveIntensity', 0); } } } }
+        function highlightLegendItem(index, highlight) { /* ... */ if (index >= 0 && index < legendItems.length) { const item = legendItems[index]; if (item && item.colorSquare && item.categoryText) { const targetColor = highlight ? '#FFF' : COLOR_PALETTE[index % COLOR_PALETTE.length]; const targetTextColor = highlight ? '#FFFF00' : '#DDD'; item.colorSquare.setAttribute('color', targetColor); item.categoryText.setAttribute('color', targetTextColor); } else { console.warn("Attempted to highlight non-existent legend item at index:", index); } } }
+
+        // --- Utility Functions ---
+        function showFeedback(message, duration = FEEDBACK_DURATION, color = '#D9534F') { /* ... */ if (feedbackTimeout) clearTimeout(feedbackTimeout); feedbackText.setAttribute('value', message); feedbackText.setAttribute('color', color); feedbackText.setAttribute('visible', true); if (duration !== null) { feedbackTimeout = setTimeout(() => { feedbackText.setAttribute('visible', false); feedbackTimeout = null; }, duration); } }
+        function showUploadStatus(message, duration = 5000, bgColor = 'rgba(0, 0, 0, 0.7)') { /* ... */ uploadStatus.textContent = message; uploadStatus.style.backgroundColor = bgColor; uploadStatus.style.display = 'block'; if (duration !== null) { setTimeout(() => { if (uploadStatus.textContent === message) { uploadStatus.style.display = 'none'; uploadStatus.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; } }, duration); } }
+        function moveCamera(targetPosition, targetRotation) { /* ... */ rig.setAttribute('animation__position', { property: 'position', to: `${targetPosition.x} ${targetPosition.y} ${targetPosition.z}`, dur: 1000, easing: 'easeInOutQuad', startEvents: 'startmove' }); cameraEl.setAttribute('animation__rotation', { property: 'rotation', to: `${targetRotation.x} ${targetRotation.y} ${targetRotation.z}`, dur: 1000, easing: 'easeInOutQuad', startEvents: 'startrotate' }); setTimeout(() => { rig.emit('startmove'); cameraEl.emit('startrotate'); }, 0); }
+        function lightenColor(hex, percent) { /* ... */ hex = hex.replace(/^\s*#|\s*$/g, ''); if (hex.length == 3) hex = hex.replace(/(.)/g, '$1$1'); let r = parseInt(hex.substr(0, 2), 16), g = parseInt(hex.substr(2, 2), 16), b = parseInt(hex.substr(4, 2), 16); percent = Math.max(-100, Math.min(100, percent)); r = Math.round(Math.min(255, r * (1 + percent / 100))); g = Math.round(Math.min(255, g * (1 + percent / 100))); b = Math.round(Math.min(255, b * (1 + percent / 100))); return '#' + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0'); }
+
+    </script>
+</body>
+</html>
